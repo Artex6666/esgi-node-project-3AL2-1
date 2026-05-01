@@ -22,8 +22,8 @@
     "declaration": false,
     "sourceMap": true,
     "removeComments": false,
-    "skipLibCheck": true,
+    "skipLibCheck": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "tests"],
+  "exclude": ["node_modules", "dist", "tests"]
 }

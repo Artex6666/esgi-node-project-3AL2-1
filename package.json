@@ -7,7 +7,16 @@
   "engines": {
     "node": ">=25"
   },
-  "scripts": {},
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
+    "build": "tsc",
+    "start": "node --env-file-if-exists=.env dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
   "dependencies": {
     "@scalar/express-api-reference": "^0.9.13",
     "argon2": "^0.44.0",

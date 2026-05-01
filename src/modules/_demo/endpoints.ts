@@ -5,8 +5,9 @@ export const pingEndpoint = baseFactory.build({
   method: "get",
   input: PingInputSchema,
   output: PingOutputSchema,
-  handler: async ({ input }) => ({
-    pong: input.name,
-    at: new Date().toISOString(),
-  }),
+  handler: ({ input }) =>
+    Promise.resolve({
+      pong: input.name,
+      at: new Date().toISOString(),
+    }),
 });
