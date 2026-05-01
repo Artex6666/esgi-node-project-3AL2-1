@@ -1,0 +1,11 @@
+{
+  "name": "esgi-cinema-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cinema management REST API",
+  "type": "module",
+  "engines": {
+    "node": ">=25"
+  },
+  "scripts": {}
+}
