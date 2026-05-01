@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type ErrorRequestHandler } from "express";
 import { attachRouting, createConfig } from "express-zod-api";
 
 import { logger } from "./config/logger.js";
@@ -26,3 +26,19 @@ export const config = createConfig({
 const { notFoundHandler } = attachRouting(config, routing);
 
 app.use(notFoundHandler);
+
+const jsonErrorHandler: ErrorRequestHandler = (err: unknown, _req, res, next) => {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+  const status =
+    err && typeof err === "object" && "statusCode" in err && typeof err.statusCode === "number" ? err.statusCode : 500;
+  const message =
+    err && typeof err === "object" && "message" in err && typeof err.message === "string"
+      ? err.message
+      : "Internal Server Error";
+  res.status(status).json({ status: "error", error: { message } });
+};
+
+app.use(jsonErrorHandler);
