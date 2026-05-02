@@ -1,0 +1,157 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CLIENT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum TicketKind {
+  STANDARD
+  SUPER
+}
+
+enum TransactionKind {
+  DEPOSIT
+  WITHDRAWAL
+  TICKET_PURCHASE
+}
+
+enum EmployeePosition {
+  CONCESSION
+  RECEPTION
+  PROJECTIONIST
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(CLIENT)
+  balanceCents Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  refreshTokens RefreshToken[]
+  tickets       Ticket[]
+  transactions  Transaction[]
+  shifts        EmployeeShift[]
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Room {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  description      String
+  images           String[]
+  type             String
+  capacity         Int
+  accessible       Boolean  @default(false)
+  underMaintenance Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  sessions Session[]
+}
+
+model Movie {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  durationMin Int
+  genre       String
+  releasedAt  DateTime
+  createdAt   DateTime @default(now())
+
+  sessions Session[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  movieId    String
+  roomId     String
+  startsAt   DateTime
+  endsAt     DateTime
+  priceCents Int
+  createdAt  DateTime @default(now())
+
+  movie        Movie         @relation(fields: [movieId], references: [id], onDelete: Restrict)
+  room         Room          @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  ticketUsages TicketUsage[]
+
+  @@index([roomId, startsAt])
+  @@index([movieId, startsAt])
+}
+
+model Ticket {
+  id            String     @id @default(cuid())
+  userId        String
+  kind          TicketKind
+  usesRemaining Int
+  purchasedAt   DateTime   @default(now())
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usages      TicketUsage[]
+  transaction Transaction?
+
+  @@index([userId])
+}
+
+model TicketUsage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  sessionId String
+  usedAt    DateTime @default(now())
+
+  ticket  Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  @@unique([ticketId, sessionId])
+  @@index([sessionId])
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  amountCents Int
+  kind        TransactionKind
+  ticketId    String?         @unique
+  createdAt   DateTime        @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+model EmployeeShift {
+  id        String           @id @default(cuid())
+  userId    String
+  position  EmployeePosition
+  startsAt  DateTime
+  endsAt    DateTime
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([startsAt])
+  @@index([userId])
+}
