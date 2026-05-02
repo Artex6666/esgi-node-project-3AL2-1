@@ -6,6 +6,14 @@ const EnvSchema = z.object({
 
   DATABASE_URL: z.url(),
 
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 chars"),
+  JWT_ACCESS_TTL_SEC: z.coerce.number().int().positive().default(300),
+  JWT_REFRESH_TTL_SEC: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 24 * 7),
+
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
 
   PUBLIC_URL: z.url().default("http://localhost:3000"),
