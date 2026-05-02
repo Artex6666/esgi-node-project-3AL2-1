@@ -12,7 +12,9 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        projectService: {
+          allowDefaultProject: ["prisma/seed.ts"],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -33,7 +35,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.js", "**/*.mjs", "**/*.cjs"],
+    files: ["**/*.js", "**/*.mjs", "**/*.cjs", "prisma/**/*.ts"],
     extends: [tseslint.configs.disableTypeChecked],
   },
   prettier,
