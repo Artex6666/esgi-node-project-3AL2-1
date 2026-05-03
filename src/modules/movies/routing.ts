@@ -1,7 +1,21 @@
 import type { Routing } from "express-zod-api";
 
-import { listMoviesEndpoint } from "./endpoints.js";
+import {
+  createMovieEndpoint,
+  deleteMovieEndpoint,
+  getMovieEndpoint,
+  listMoviesEndpoint,
+  moviePlanningEndpoint,
+  updateMovieEndpoint,
+} from "./endpoints.js";
 
 export const moviesRouting: Routing = {
-  "": listMoviesEndpoint,
+  get: listMoviesEndpoint,
+  post: createMovieEndpoint,
+  ":id": {
+    get: getMovieEndpoint,
+    put: updateMovieEndpoint,
+    delete: deleteMovieEndpoint,
+    planning: moviePlanningEndpoint,
+  },
 };
