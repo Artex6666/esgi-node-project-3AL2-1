@@ -98,6 +98,7 @@ Conforme à la section *Gestion des Séances* du sujet.
 - [x] Salle en maintenance : création/MAJ refusée (422), et la liste ne renvoie pas les séances qui s'y déroulent
 - [x] Suppression refusée (409) si la séance a déjà des billets utilisés (FK Prisma `P2003`)
 - [x] Seed planifie ≥ 1 mois de séances ouvrées à l'avance (déjà en place)
+- [x] Tests d'intégration : CRUD + rôles, business hours (weekend, avant 9h, après 20h, start ≥ end), durée (frontière `film + 30`), overlap (même salle, même film salle ≠, dos-à-dos OK, salles ≠ films ≠ OK), maintenance, attendance (compte, 0, 403, 404)
 
 #### Endpoints exposés
 
