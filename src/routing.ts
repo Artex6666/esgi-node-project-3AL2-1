@@ -2,6 +2,7 @@ import type { Routing } from "express-zod-api";
 
 import { authRouting } from "./modules/auth/routing.js";
 import { moviesRouting } from "./modules/movies/routing.js";
+import { roomsRouting } from "./modules/rooms/routing.js";
 import { meEndpoint } from "./modules/users/endpoints.js";
 
 export const routing: Routing = {
@@ -9,5 +10,6 @@ export const routing: Routing = {
     auth: authRouting,
     me: meEndpoint,
     movies: moviesRouting,
+    rooms: roomsRouting,
   },
 };
