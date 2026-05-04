@@ -5,6 +5,7 @@ import {
   deleteRoomEndpoint,
   getRoomEndpoint,
   listRoomsEndpoint,
+  roomPlanningEndpoint,
   setRoomMaintenanceEndpoint,
   updateRoomEndpoint,
 } from "./endpoints.js";
@@ -17,5 +18,6 @@ export const roomsRouting: Routing = {
     put: updateRoomEndpoint,
     delete: deleteRoomEndpoint,
     maintenance: setRoomMaintenanceEndpoint,
+    planning: roomPlanningEndpoint,
   },
 };

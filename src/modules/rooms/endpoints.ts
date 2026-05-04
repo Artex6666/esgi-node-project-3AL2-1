@@ -8,6 +8,8 @@ import {
   ListRoomsInputSchema,
   ListRoomsOutputSchema,
   RoomIdParamsSchema,
+  RoomPlanningInputSchema,
+  RoomPlanningOutputSchema,
   SetMaintenanceInputSchema,
   SetMaintenanceOutputSchema,
   UpdateRoomInputSchema,
@@ -58,4 +60,11 @@ export const setRoomMaintenanceEndpoint = adminFactory.build({
   input: SetMaintenanceInputSchema,
   output: SetMaintenanceOutputSchema,
   handler: ({ input }) => roomsService.setMaintenance(input.id, input.underMaintenance),
+});
+
+export const roomPlanningEndpoint = authedFactory.build({
+  method: "get",
+  input: RoomPlanningInputSchema,
+  output: RoomPlanningOutputSchema,
+  handler: ({ input }) => roomsService.planning(input.id, { from: input.from, to: input.to }),
 });

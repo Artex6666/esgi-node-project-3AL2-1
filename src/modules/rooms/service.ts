@@ -21,6 +21,11 @@ interface UpdateRoomData {
   accessible?: boolean;
 }
 
+interface PlanningRange {
+  from?: Date;
+  to?: Date;
+}
+
 const findRoomOrThrow = async (id: string) => {
   const room = await prisma.room.findUnique({ where: { id } });
   if (!room) throw new NotFoundError("Room not found");
@@ -74,5 +79,37 @@ export const roomsService = {
   setMaintenance: async (id: string, underMaintenance: boolean) => {
     await findRoomOrThrow(id);
     return prisma.room.update({ where: { id }, data: { underMaintenance } });
+  },
+
+  planning: async (id: string, range: PlanningRange) => {
+    const room = await findRoomOrThrow(id);
+    if (room.underMaintenance) {
+      return { roomId: id, items: [] };
+    }
+    const sessions = await prisma.session.findMany({
+      where: {
+        roomId: id,
+        ...(range.from || range.to
+          ? {
+              startsAt: {
+                ...(range.from ? { gte: range.from } : {}),
+                ...(range.to ? { lte: range.to } : {}),
+              },
+            }
+          : {}),
+      },
+      include: { movie: { select: { id: true, title: true, durationMin: true } } },
+      orderBy: { startsAt: "asc" },
+    });
+    return {
+      roomId: id,
+      items: sessions.map((s) => ({
+        id: s.id,
+        startsAt: s.startsAt,
+        endsAt: s.endsAt,
+        priceCents: s.priceCents,
+        movie: s.movie,
+      })),
+    };
   },
 };

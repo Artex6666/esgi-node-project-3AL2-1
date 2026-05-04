@@ -48,3 +48,25 @@ export const SetMaintenanceInputSchema = RoomIdParamsSchema.extend({
   underMaintenance: z.boolean(),
 });
 export const SetMaintenanceOutputSchema = RoomSchema;
+
+export const RoomPlanningInputSchema = RoomIdParamsSchema.extend({
+  from: ez.dateIn().optional(),
+  to: ez.dateIn().optional(),
+});
+
+export const RoomPlanningSessionSchema = z.object({
+  id: z.string(),
+  startsAt: ez.dateOut(),
+  endsAt: ez.dateOut(),
+  priceCents: z.int().nonnegative(),
+  movie: z.object({
+    id: z.string(),
+    title: z.string(),
+    durationMin: z.int().positive(),
+  }),
+});
+
+export const RoomPlanningOutputSchema = z.object({
+  roomId: z.string(),
+  items: z.array(RoomPlanningSessionSchema),
+});
