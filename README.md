@@ -84,6 +84,32 @@ Conforme à la section *Gestion des Salles de Cinéma* du sujet.
 | `PATCH` | `/v1/rooms/:id/maintenance` | admin — body `{ underMaintenance: boolean }` |
 | `GET` | `/v1/rooms/:id/planning?from=&to=` | authentifié |
 
+### M6 — Gestion des Séances — *Loris RAMEAU*
+
+Conforme à la section *Gestion des Séances* du sujet.
+
+- [x] Helpers temporels réutilisables : [src/lib/businessHours.ts](src/lib/businessHours.ts) (heures d'ouverture, durée min, weekday) et [src/lib/overlap.ts](src/lib/overlap.ts) (intervalles semi-ouverts)
+- [x] CRUD complet sur les séances réservé aux admins
+- [x] Liste / planning des séances accessible à tout utilisateur authentifié, avec filtre `from`/`to` ISO-8601
+- [x] Endpoint admin de fréquentation par séance (`attendeesCount` = nombre de `TicketUsage` rattachés)
+- [x] **Règle « cinéma ouvert Lun-Ven 09:00–20:00 »** : rejet 422 si la séance déborde, n'est pas un jour ouvré, ou chevauche minuit
+- [x] **Règle « durée ≥ film + 30 min »** : rejet 422 si la séance est trop courte
+- [x] **Pas de chevauchement** : rejet 409 si une autre séance dans la même salle ou pour le même film recoupe l'intervalle (intervalles semi-ouverts → enchaînements dos à dos OK)
+- [x] Salle en maintenance : création/MAJ refusée (422), et la liste ne renvoie pas les séances qui s'y déroulent
+- [x] Suppression refusée (409) si la séance a déjà des billets utilisés (FK Prisma `P2003`)
+- [x] Seed planifie ≥ 1 mois de séances ouvrées à l'avance (déjà en place)
+
+#### Endpoints exposés
+
+| Méthode | Path | Accès |
+|---|---|---|
+| `GET` | `/v1/sessions?from=&to=` | authentifié — exclut les salles en maintenance |
+| `GET` | `/v1/sessions/:id` | authentifié |
+| `POST` | `/v1/sessions` | admin |
+| `PUT` | `/v1/sessions/:id` | admin |
+| `DELETE` | `/v1/sessions/:id` | admin |
+| `GET` | `/v1/sessions/:id/attendance` | admin — `{ sessionId, attendeesCount }` |
+
 ---
 
 ## Démarrage
