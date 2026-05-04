@@ -6,10 +6,16 @@ const ADMIN_URL = "postgresql://cinema:cinema@localhost:5432/postgres";
 const TEST_DB = "cinema_test";
 const TEST_DATABASE_URL = `postgresql://cinema:cinema@localhost:5432/${TEST_DB}?schema=public`;
 
-const ENGINE_ENV = {
-  PRISMA_SCHEMA_ENGINE_BINARY: "node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x",
-  PRISMA_QUERY_ENGINE_LIBRARY: "node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node",
-};
+// NixOS / some Linux setups need an explicit engine binary path; on other
+// platforms Prisma's native auto-detection works (and the debian binary
+// isn't even downloaded on Windows/macOS).
+const ENGINE_ENV: Record<string, string> =
+  process.platform === "linux"
+    ? {
+        PRISMA_SCHEMA_ENGINE_BINARY: "node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x",
+        PRISMA_QUERY_ENGINE_LIBRARY: "node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node",
+      }
+    : {};
 
 async function ensureDatabase() {
   const client = new Client({ connectionString: ADMIN_URL });
