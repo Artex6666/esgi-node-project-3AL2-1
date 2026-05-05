@@ -7,7 +7,7 @@ import { sessionsRouting } from "./modules/sessions/routing.js";
 import { meEndpoint } from "./modules/users/endpoints.js";
 import { depositEndpoint, getWalletEndpoint, getWalletTransactionsEndpoint, withdrawEndpoint } from "./modules/wallet/endpoints.js";
 import { buyTicketEndpoint, getMyTicketsEndpoint, getMyTicketUsagesEndpoint, useTicketEndpoint } from "./modules/tickets/endpoints.js";
-
+import { getAttendanceStatsEndpoint, getDailyStatsEndpoint, getSessionStatsEndpoint, getWeeklyStatsEndpoint } from "./modules/stats/endpoints.js";
 
 export const routing: Routing = {
   v1: {
@@ -27,6 +27,15 @@ export const routing: Routing = {
       buy: buyTicketEndpoint,
       use: useTicketEndpoint,
       usages: getMyTicketUsagesEndpoint,
+    },
+
+    stats: {
+      attendance: getAttendanceStatsEndpoint,
+      daily: getDailyStatsEndpoint,
+      weekly: getWeeklyStatsEndpoint,
+      sessions: {
+        ":id": getSessionStatsEndpoint,
+      },
     },
   },
 };
