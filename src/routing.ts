@@ -5,6 +5,7 @@ import { moviesRouting } from "./modules/movies/routing.js";
 import { roomsRouting } from "./modules/rooms/routing.js";
 import { sessionsRouting } from "./modules/sessions/routing.js";
 import { meEndpoint } from "./modules/users/endpoints.js";
+import { depositEndpoint, getWalletEndpoint, getWalletTransactionsEndpoint, withdrawEndpoint} from "./modules/wallet/endpoints.js";
 
 export const routing: Routing = {
   v1: {
@@ -13,5 +14,11 @@ export const routing: Routing = {
     movies: moviesRouting,
     rooms: roomsRouting,
     sessions: sessionsRouting,
+    wallet: {
+      "": getWalletEndpoint,
+      deposit: depositEndpoint,
+      withdraw: withdrawEndpoint,
+      transactions: getWalletTransactionsEndpoint,
+    },
   },
 };
