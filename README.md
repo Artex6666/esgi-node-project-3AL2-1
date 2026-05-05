@@ -111,7 +111,42 @@ Conforme à la section *Gestion des Séances* du sujet.
 | `DELETE` | `/v1/sessions/:id` | admin |
 | `GET` | `/v1/sessions/:id/attendance` | admin — `{ sessionId, attendeesCount }` |
 
----
+
+#### M7 — Wallet + Billetterie — *Theo Rouable*
+
+Conforme aux sections Gestion de l’Argent et Gestion des Billets du sujet.
+
+- [x] Gestion du solde utilisateur (balanceCents)
+- [x] Dépôt d’argent (incrément transactionnel)
+- [x] Retrait d’argent avec vérification du solde
+- [x] Historique des transactions triées par date
+- [x] Types de transactions : DEPOSIT, WITHDRAWAL, TICKET_PURCHASE
+- [x] Achat de billets (STANDARD, SUPER) avec décrément du solde
+- [x] STANDARD → 1 utilisation, SUPER → 10 utilisations
+- [x] Utilisation d’un billet pour accéder à une séance
+- [x] Décrément du nombre d’utilisations restantes
+- [x] Historique des utilisations de billets
+- [x] Règle “1 utilisateur = 1 place par séance” (contrainte gérée côté code)
+- [x] Refus si solde insuffisant lors de l’achat
+- [x] Refus si ticket invalide, épuisé ou n’appartient pas à l’utilisateur
+- [x] Refus si séance passée ou salle en maintenance
+- [x] Respect de la capacité maximale de la salle
+- [x] Prévention des conditions de course via verrou SQL (SELECT ... FOR UPDATE sur Session)
+- [x] Toutes les opérations critiques sont transactionnelles (Prisma $transaction)
+- [x] Logs structurés sur les opérations 
+
+Endpoints exposés
+
+Méthode	Path	Accès
+GET	/v1/wallet	authentifié
+POST	/v1/wallet/deposit	authentifié
+POST	/v1/wallet/withdraw	authentifié
+GET	/v1/wallet/transactions	authentifié
+GET	/v1/tickets	authentifié
+POST	/v1/tickets/buy	authentifié
+POST	/v1/tickets/use	authentifié
+GET	/v1/tickets/usages	authentifié
+
 
 ## Démarrage
 
