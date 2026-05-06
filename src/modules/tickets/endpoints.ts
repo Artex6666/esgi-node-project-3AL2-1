@@ -64,30 +64,14 @@ export const buyTicketEndpoint = authedFactory.build({
         const usesRemaining = USAGES_TICKETS[input.kind];
 
         const resultat = await prisma.$transaction(async (tx) => {
-            const utilisateur = await tx.user.findUnique({
-                where: { id: userId },
-                select: { balanceCents: true },
+            const updated = await tx.user.updateMany({
+                where: { id: userId, balanceCents: { gte: priceCents } },
+                data: { balanceCents: { decrement: priceCents } },
             });
 
-            if (!utilisateur) {
-                throw createHttpError(404, "Utilisateur introuvable");
-            }
-
-            if (utilisateur.balanceCents < priceCents) {
+            if (updated.count === 0) {
                 throw createHttpError(400, "Solde insuffisant");
             }
-
-            const utilisateurMisAJour = await tx.user.update({
-                where: { id: userId },
-                data: {
-                    balanceCents: {
-                        decrement: priceCents,
-                    },
-                },
-                select: {
-                    balanceCents: true,
-                },
-            });
 
             const ticket = await tx.ticket.create({
                 data: {
@@ -110,6 +94,11 @@ export const buyTicketEndpoint = authedFactory.build({
                     kind: "TICKET_PURCHASE",
                     ticketId: ticket.id,
                 },
+            });
+
+            const utilisateurMisAJour = await tx.user.findUniqueOrThrow({
+                where: { id: userId },
+                select: { balanceCents: true },
             });
 
             return {
