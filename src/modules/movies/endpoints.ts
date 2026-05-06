@@ -1,5 +1,5 @@
 import { adminFactory } from "../../factories/admin.js";
-import { baseFactory } from "../../factories/base.js";
+import { authedFactory } from "../../factories/authed.js";
 import {
   CreateMovieInputSchema,
   CreateMovieOutputSchema,
@@ -15,14 +15,14 @@ import {
 } from "./schemas.js";
 import { moviesService } from "./service.js";
 
-export const listMoviesEndpoint = baseFactory.build({
+export const listMoviesEndpoint = authedFactory.build({
   method: "get",
   input: ListMoviesInputSchema,
   output: ListMoviesOutputSchema,
   handler: () => moviesService.list(),
 });
 
-export const getMovieEndpoint = baseFactory.build({
+export const getMovieEndpoint = authedFactory.build({
   method: "get",
   input: MovieIdParamsSchema,
   output: GetMovieOutputSchema,
@@ -53,7 +53,7 @@ export const deleteMovieEndpoint = adminFactory.build({
   handler: ({ input }) => moviesService.delete(input.id),
 });
 
-export const moviePlanningEndpoint = baseFactory.build({
+export const moviePlanningEndpoint = authedFactory.build({
   method: "get",
   input: MoviePlanningInputSchema,
   output: MoviePlanningOutputSchema,

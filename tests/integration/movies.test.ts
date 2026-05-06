@@ -23,33 +23,44 @@ const validMovie = {
 };
 
 describe("GET /v1/movies", () => {
-  it("lists all movies (public, no auth required)", async () => {
+  it("lists all movies for authenticated users", async () => {
+    const { authHeader } = await seedUser({ role: "CLIENT" });
     await prisma.movie.create({
       data: { ...validMovie, releasedAt: new Date(validMovie.releasedAt) },
     });
-    const res = await request(app).get("/v1/movies").expect(200);
+    const res = await request(app).get("/v1/movies").set("Authorization", authHeader).expect(200);
     expect(res.body.data.items).toHaveLength(1);
     expect(res.body.data.items[0].title).toBe(validMovie.title);
   });
 
   it("returns an empty list when no movies exist", async () => {
-    const res = await request(app).get("/v1/movies").expect(200);
+    const { authHeader } = await seedUser({ role: "CLIENT" });
+    const res = await request(app).get("/v1/movies").set("Authorization", authHeader).expect(200);
     expect(res.body.data.items).toEqual([]);
+  });
+
+  it("returns 401 without an auth token", async () => {
+    await request(app).get("/v1/movies").expect(401);
   });
 });
 
 describe("GET /v1/movies/:id", () => {
   it("returns a single movie", async () => {
+    const { authHeader } = await seedUser({ role: "CLIENT" });
     const created = await prisma.movie.create({
       data: { ...validMovie, releasedAt: new Date(validMovie.releasedAt) },
     });
-    const res = await request(app).get(`/v1/movies/${created.id}`).expect(200);
+    const res = await request(app).get(`/v1/movies/${created.id}`).set("Authorization", authHeader).expect(200);
     expect(res.body.data.id).toBe(created.id);
     expect(res.body.data.title).toBe(validMovie.title);
   });
 
   it("returns 404 for an unknown id", async () => {
-    const res = await request(app).get("/v1/movies/does-not-exist").expect(404);
+    const { authHeader } = await seedUser({ role: "CLIENT" });
+    const res = await request(app)
+      .get("/v1/movies/does-not-exist")
+      .set("Authorization", authHeader)
+      .expect(404);
     expect(res.body.error.message).toMatch(/not found/i);
   });
 });
@@ -175,6 +186,7 @@ describe("DELETE /v1/movies/:id", () => {
 
 describe("GET /v1/movies/:id/planning", () => {
   it("returns sessions for the movie ordered by start time", async () => {
+    const { authHeader } = await seedUser({ role: "CLIENT" });
     const movie = await prisma.movie.create({
       data: { ...validMovie, releasedAt: new Date(validMovie.releasedAt) },
     });
@@ -200,7 +212,10 @@ describe("GET /v1/movies/:id/planning", () => {
       ],
     });
 
-    const res = await request(app).get(`/v1/movies/${movie.id}/planning`).expect(200);
+    const res = await request(app)
+      .get(`/v1/movies/${movie.id}/planning`)
+      .set("Authorization", authHeader)
+      .expect(200);
     expect(res.body.data.movieId).toBe(movie.id);
     expect(res.body.data.items).toHaveLength(2);
     expect(new Date(res.body.data.items[0].startsAt).getTime()).toBeLessThan(
@@ -210,6 +225,7 @@ describe("GET /v1/movies/:id/planning", () => {
   });
 
   it("filters by date range when from/to are given", async () => {
+    const { authHeader } = await seedUser({ role: "CLIENT" });
     const movie = await prisma.movie.create({
       data: { ...validMovie, releasedAt: new Date(validMovie.releasedAt) },
     });
@@ -237,6 +253,7 @@ describe("GET /v1/movies/:id/planning", () => {
 
     const res = await request(app)
       .get(`/v1/movies/${movie.id}/planning`)
+      .set("Authorization", authHeader)
       .query({ from: "2030-03-15T00:00:00.000Z" })
       .expect(200);
     expect(res.body.data.items).toHaveLength(1);
@@ -244,6 +261,7 @@ describe("GET /v1/movies/:id/planning", () => {
   });
 
   it("excludes sessions in rooms under maintenance", async () => {
+    const { authHeader } = await seedUser({ role: "CLIENT" });
     const movie = await prisma.movie.create({
       data: { ...validMovie, releasedAt: new Date(validMovie.releasedAt) },
     });
@@ -279,12 +297,23 @@ describe("GET /v1/movies/:id/planning", () => {
       ],
     });
 
-    const res = await request(app).get(`/v1/movies/${movie.id}/planning`).expect(200);
+    const res = await request(app)
+      .get(`/v1/movies/${movie.id}/planning`)
+      .set("Authorization", authHeader)
+      .expect(200);
     expect(res.body.data.items).toHaveLength(1);
     expect(res.body.data.items[0].room.name).toBe("Salle ok");
   });
 
   it("returns 404 if the movie does not exist", async () => {
-    await request(app).get("/v1/movies/missing-id/planning").expect(404);
+    const { authHeader } = await seedUser({ role: "CLIENT" });
+    await request(app).get("/v1/movies/missing-id/planning").set("Authorization", authHeader).expect(404);
+  });
+
+  it("returns 401 without an auth token", async () => {
+    const movie = await prisma.movie.create({
+      data: { ...validMovie, releasedAt: new Date(validMovie.releasedAt) },
+    });
+    await request(app).get(`/v1/movies/${movie.id}/planning`).expect(401);
   });
 });
