@@ -21,3 +21,15 @@ export const ListTransactionsInputSchema = z.object({});
 export const ListTransactionsOutputSchema = z.object({
   transactions: z.array(TransactionSchema),
 });
+
+export const AdminTransactionSchema = TransactionSchema.extend({
+  userId: z.string(),
+  user: z.object({ id: z.string(), email: z.email() }),
+});
+
+export const ListAllTransactionsInputSchema = z.object({
+  userId: z.string().optional(),
+});
+export const ListAllTransactionsOutputSchema = z.object({
+  transactions: z.array(AdminTransactionSchema),
+});

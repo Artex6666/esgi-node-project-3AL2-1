@@ -1,8 +1,11 @@
 import { z } from "zod";
 
+import { adminFactory } from "../../factories/admin.js";
 import { authedFactory } from "../../factories/authed.js";
 import {
   AmountInputSchema,
+  ListAllTransactionsInputSchema,
+  ListAllTransactionsOutputSchema,
   ListTransactionsInputSchema,
   ListTransactionsOutputSchema,
   WalletBalanceSchema,
@@ -35,4 +38,11 @@ export const listMyTransactionsEndpoint = authedFactory.build({
   input: ListTransactionsInputSchema,
   output: ListTransactionsOutputSchema,
   handler: ({ ctx }) => walletService.listTransactions(ctx.user.id),
+});
+
+export const listAllTransactionsEndpoint = adminFactory.build({
+  method: "get",
+  input: ListAllTransactionsInputSchema,
+  output: ListAllTransactionsOutputSchema,
+  handler: ({ input }) => walletService.listAllTransactions({ userId: input.userId }),
 });

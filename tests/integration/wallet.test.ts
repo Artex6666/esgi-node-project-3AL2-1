@@ -81,4 +81,46 @@ describe("Wallet", () => {
 
     expect(response.status).toBe(401);
   });
+
+  describe("GET /v1/wallet/all-transactions (admin)", () => {
+    it("retourne les transactions de tous les utilisateurs pour un admin", async () => {
+      const { authHeader: adminHeader } = await seedUser({ role: "ADMIN" });
+      const { authHeader: clientHeader } = await seedUser({
+        role: "CLIENT",
+        email: "alice@cinema.test",
+      });
+      await request(app).post("/v1/wallet/deposit").set("Authorization", clientHeader).send({ amountCents: 1000 });
+
+      const res = await request(app)
+        .get("/v1/wallet/all-transactions")
+        .set("Authorization", adminHeader)
+        .expect(200);
+      expect(res.body.data.transactions).toHaveLength(1);
+      expect(res.body.data.transactions[0].user.email).toBe("alice@cinema.test");
+    });
+
+    it("filtre par userId quand fourni", async () => {
+      const { authHeader: adminHeader } = await seedUser({ role: "ADMIN" });
+      const { authHeader: aliceHeader, user: alice } = await seedUser({
+        role: "CLIENT",
+        email: "alice@cinema.test",
+      });
+      const { authHeader: bobHeader } = await seedUser({ role: "CLIENT", email: "bob@cinema.test" });
+      await request(app).post("/v1/wallet/deposit").set("Authorization", aliceHeader).send({ amountCents: 1000 });
+      await request(app).post("/v1/wallet/deposit").set("Authorization", bobHeader).send({ amountCents: 500 });
+
+      const res = await request(app)
+        .get("/v1/wallet/all-transactions")
+        .set("Authorization", adminHeader)
+        .query({ userId: alice.id })
+        .expect(200);
+      expect(res.body.data.transactions).toHaveLength(1);
+      expect(res.body.data.transactions[0].userId).toBe(alice.id);
+    });
+
+    it("refuse l'accès à un client", async () => {
+      const { authHeader } = await seedUser({ role: "CLIENT" });
+      await request(app).get("/v1/wallet/all-transactions").set("Authorization", authHeader).expect(403);
+    });
+  });
 });

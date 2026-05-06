@@ -62,4 +62,22 @@ export const walletService = {
     });
     return { transactions };
   },
+
+  listAllTransactions: async (filter: { userId?: string }) => {
+    const transactions = await prisma.transaction.findMany({
+      where: filter.userId ? { userId: filter.userId } : undefined,
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      select: {
+        id: true,
+        amountCents: true,
+        kind: true,
+        ticketId: true,
+        createdAt: true,
+        userId: true,
+        user: { select: { id: true, email: true } },
+      },
+    });
+    return { transactions };
+  },
 };
