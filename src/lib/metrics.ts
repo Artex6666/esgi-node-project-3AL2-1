@@ -14,7 +14,8 @@ export const metricsMiddleware: RequestHandler = (req, res, next) => {
   const startNs = process.hrtime.bigint();
   res.on("finish", () => {
     const elapsedSec = Number(process.hrtime.bigint() - startNs) / 1e9;
-    const route = req.route?.path ?? req.baseUrl + req.path;
+    const matchedRoute = (req.route as { path?: string } | undefined)?.path;
+    const route = matchedRoute ?? `${req.baseUrl}${req.path}`;
     httpRequestDuration
       .labels({ method: req.method, route, status: String(res.statusCode) })
       .observe(elapsedSec);
