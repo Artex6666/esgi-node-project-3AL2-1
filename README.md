@@ -161,7 +161,7 @@ Couvre le SUJET §"Utilisateurs de l'API" (visualisation des utilisateurs et de 
 | `GET` | `/v1/users` | admin — liste tous les comptes |
 | `GET` | `/v1/users/:id` | admin — profil + tickets/usages/transactions counts + 10 dernières séances vues |
 
-### M10 — Documentation et observabilité
+### M10 — Documentation et observabilité  — *Etienne Quantin*
 
 | Path | Description |
 |---|---|
@@ -170,16 +170,37 @@ Couvre le SUJET §"Utilisateurs de l'API" (visualisation des utilisateurs et de 
 | `GET /docs` | UI Scalar consommant `/openapi.json` |
 | `GET /metrics` | métriques Prometheus (`prom-client`, default + histogramme `http_request_duration_seconds`) |
 
-## Démarrage
+#### Pipeline de logs (production)
+
+La stack prod ajoute **Loki** (stockage), **Promtail** (scrape Docker via `docker_sd_configs`) et **Grafana** (UI). pino émet du JSON sur stdout → Docker capture → Promtail enrichit avec `service`/`container`/`level` puis pousse vers Loki.
+
+- `observability/loki-config.yml` — Loki single-binary, rétention 7 jours, schéma `v13`.
+- `observability/promtail-config.yml` — découverte Docker, parsing JSON ciblé sur le container `api`.
+- `observability/grafana/provisioning/datasources/loki.yml` — Loki provisionné comme datasource par défaut.
+
+Grafana est exposé uniquement sur `127.0.0.1:3001` (pas internet-facing). Tunnel SSH pour la démo :
 
 ```bash
-cp .env.dist .env          # ajuster JWT_SECRET (>= 32 chars)
-docker compose up -d       # Postgres
-npm install
-npm run db:migrate         # applique les migrations
-npm run db:seed            # 10 salles + films + utilisateurs de démo
-npm run dev                # http://localhost:3000
+ssh -L 3001:localhost:3001 <host>
+# puis http://localhost:3001 (login: GRAFANA_ADMIN_USER / GRAFANA_ADMIN_PASSWORD)
 ```
+
+Requêtes LogQL utiles : `{service="api"}` (tous les logs API), `{service="api", level="error"}`, `{service="api"} | json | statusCode >= 500`.
+
+## Démarrage (stack de dev)
+
+La stack de dev se compose de **Postgres en Docker** + l'API lancée localement via `npm run dev` (rechargement à chaud, sources TypeScript).
+
+```bash
+cp .env.dist .env                       # ajuster JWT_SECRET (>= 32 chars)
+docker compose up -d                    # Postgres 16 sur :5432 (compose file: docker-compose.yml)
+npm install
+npm run db:migrate                      # applique les migrations
+npm run db:seed                         # 10 salles + films + utilisateurs de démo
+npm run dev                             # http://localhost:3000
+```
+
+Pour arrêter Postgres : `docker compose down` (ajoute `-v` pour effacer aussi le volume de données).
 
 ## Tests
 
@@ -190,13 +211,25 @@ npm test -- tests/integration/rooms.test.ts    # uniquement le M5
 
 Les tests utilisent une base `cinema_test` séparée, créée et migrée automatiquement par `tests/global-setup.ts`.
 
-## Production
+## Production (stack complète)
 
-Image Docker multi-étape (`Dockerfile`) : build TypeScript → image runtime sans sources `.ts`. La stack `compose.prod.yml` orchestre Postgres + un job de migration unique (`prisma migrate deploy`) + l'API + Caddy comme reverse proxy avec terminaison TLS automatique (Let's Encrypt).
+Image Docker multi-étape (`Dockerfile`) : build TypeScript → image runtime sans sources `.ts`. La stack `docker-compose.prod.yml` orchestre Postgres + un job de migration unique (`prisma migrate deploy`) + l'API + Caddy (reverse proxy + TLS auto Let's Encrypt) + Prometheus (métriques) + Loki/Promtail/Grafana (logs et dashboards).
+
+Variables requises dans le fichier d'env (par convention `.env.prod`, non versionné) :
+`POSTGRES_PASSWORD`, `JWT_SECRET`, `DATABASE_URL`, `PUBLIC_URL`, `PUBLIC_HOST`, `GRAFANA_ADMIN_PASSWORD`.
 
 ```bash
-# Définir au minimum POSTGRES_PASSWORD, JWT_SECRET, DATABASE_URL, PUBLIC_URL, PUBLIC_HOST
-docker compose -f compose.prod.yml up -d --build
+# Démarrer (build de l'image + up détaché)
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+
+# Suivre les logs
+docker compose --env-file .env.prod -f docker-compose.prod.yml logs -f api
+
+# Arrêter (conserve les volumes : DB, certificats, données Loki/Prometheus)
+docker compose --env-file .env.prod -f docker-compose.prod.yml down
+
+# Arrêter et tout effacer (DB + certs + métriques + logs)
+docker compose --env-file .env.prod -f docker-compose.prod.yml down -v
 ```
 
-Caddy gère HTTPS automatiquement pour le domaine défini par `PUBLIC_HOST` (les certificats persistent dans le volume `caddy_data`).
+Caddy gère HTTPS automatiquement pour le domaine défini par `PUBLIC_HOST` (les certificats persistent dans le volume `caddy_data`). Grafana n'est pas exposé publiquement (binding `127.0.0.1:3001`).

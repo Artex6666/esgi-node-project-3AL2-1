@@ -43,7 +43,11 @@ const openApiSpec = JSON.parse(
     version: "0.1.0",
     serverUrl: env.PUBLIC_URL,
   }).getSpecAsJson(),
-) as Record<string, unknown>;
+) as { paths?: Record<string, Record<string, unknown>> } & Record<string, unknown>;
+
+for (const operations of Object.values(openApiSpec.paths ?? {})) {
+  delete operations["head"]; // Remove head methods in the OpenAPI spec
+}
 
 app.get("/openapi.json", (_req, res) => {
   res.json(openApiSpec);
