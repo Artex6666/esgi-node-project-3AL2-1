@@ -7,7 +7,7 @@ import { sessionsRouting } from "./modules/sessions/routing.js";
 import { meEndpoint } from "./modules/users/endpoints.js";
 import { walletRouting } from "./modules/wallet/routing.js";
 import { ticketsRouting } from "./modules/tickets/routing.js";
-import { getAttendanceStatsEndpoint, getDailyStatsEndpoint, getSessionStatsEndpoint, getWeeklyStatsEndpoint } from "./modules/stats/endpoints.js";
+import { statsRouting } from "./modules/stats/routing.js";
 
 export const routing: Routing = {
   v1: {
@@ -19,13 +19,6 @@ export const routing: Routing = {
     wallet: walletRouting,
     tickets: ticketsRouting,
 
-    stats: {
-      attendance: getAttendanceStatsEndpoint,
-      daily: getDailyStatsEndpoint,
-      weekly: getWeeklyStatsEndpoint,
-      sessions: {
-        ":id": getSessionStatsEndpoint,
-      },
-    },
+    stats: statsRouting,
   },
 };
