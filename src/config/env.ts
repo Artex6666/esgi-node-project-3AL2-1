@@ -17,6 +17,9 @@ const EnvSchema = z.object({
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
 
   PUBLIC_URL: z.url().default("http://localhost:3000"),
+
+  TICKET_STANDARD_PRICE_CENTS: z.coerce.number().int().nonnegative().default(1000),
+  TICKET_SUPER_PRICE_CENTS: z.coerce.number().int().nonnegative().default(8000),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -49,7 +49,7 @@ describe("Tickets", () => {
       .set("Authorization", authHeader)
       .send({ kind: "STANDARD" });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
   });
 
   it("permet d'acheter un ticket STANDARD", async () => {
@@ -140,7 +140,7 @@ describe("Tickets", () => {
     );
 
     const successes = responses.filter((r) => r.status === 200);
-    const failures = responses.filter((r) => r.status === 400);
+    const failures = responses.filter((r) => r.status === 422);
     expect(successes).toHaveLength(5);
     expect(failures).toHaveLength(5);
 
@@ -171,6 +171,6 @@ describe("Tickets", () => {
       .set("Authorization", authHeader)
       .send({ ticketId: buy2.body.data.ticket.id, sessionId: session.id });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
   });
 });

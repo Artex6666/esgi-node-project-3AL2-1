@@ -6,7 +6,7 @@ import { roomsRouting } from "./modules/rooms/routing.js";
 import { sessionsRouting } from "./modules/sessions/routing.js";
 import { meEndpoint } from "./modules/users/endpoints.js";
 import { walletRouting } from "./modules/wallet/routing.js";
-import { buyTicketEndpoint, getMyTicketsEndpoint, getMyTicketUsagesEndpoint, useTicketEndpoint } from "./modules/tickets/endpoints.js";
+import { ticketsRouting } from "./modules/tickets/routing.js";
 import { getAttendanceStatsEndpoint, getDailyStatsEndpoint, getSessionStatsEndpoint, getWeeklyStatsEndpoint } from "./modules/stats/endpoints.js";
 
 export const routing: Routing = {
@@ -17,12 +17,7 @@ export const routing: Routing = {
     rooms: roomsRouting,
     sessions: sessionsRouting,
     wallet: walletRouting,
-    tickets: {
-      "": getMyTicketsEndpoint,
-      buy: buyTicketEndpoint,
-      use: useTicketEndpoint,
-      usages: getMyTicketUsagesEndpoint,
-    },
+    tickets: ticketsRouting,
 
     stats: {
       attendance: getAttendanceStatsEndpoint,
