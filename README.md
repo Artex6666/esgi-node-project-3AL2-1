@@ -131,22 +131,44 @@ Conforme aux sections Gestion de l’Argent et Gestion des Billets du sujet.
 - [x] Refus si ticket invalide, épuisé ou n’appartient pas à l’utilisateur
 - [x] Refus si séance passée ou salle en maintenance
 - [x] Respect de la capacité maximale de la salle
-- [x] Prévention des conditions de course via verrou SQL (SELECT ... FOR UPDATE sur Session)
-- [x] Toutes les opérations critiques sont transactionnelles (Prisma $transaction)
-- [x] Logs structurés sur les opérations 
+- [x] Prévention des conditions de course :
+      - séance complète/double-place → `SELECT ... FOR UPDATE` sur `Session` lors de l'utilisation d'un billet
+      - dépassement de solde → `UPDATE ... WHERE balanceCents >= amount` (mise à jour conditionnelle atomique) au retrait et à l'achat
+- [x] Toutes les opérations critiques sont transactionnelles (Prisma `$transaction`)
+- [x] Logs structurés sur les opérations
+- [x] Régressions race-condition couvertes par un test (achat parallèle x10)
 
-Endpoints exposés
+#### Endpoints exposés
 
-Méthode	Path	Accès
-GET	/v1/wallet	authentifié
-POST	/v1/wallet/deposit	authentifié
-POST	/v1/wallet/withdraw	authentifié
-GET	/v1/wallet/transactions	authentifié
-GET	/v1/tickets	authentifié
-POST	/v1/tickets/buy	authentifié
-POST	/v1/tickets/use	authentifié
-GET	/v1/tickets/usages	authentifié
+| Méthode | Path | Accès |
+|---|---|---|
+| `GET` | `/v1/wallet` | authentifié |
+| `POST` | `/v1/wallet/deposit` | authentifié |
+| `POST` | `/v1/wallet/withdraw` | authentifié |
+| `GET` | `/v1/wallet/transactions` | authentifié |
+| `GET` | `/v1/wallet/all-transactions?userId=` | admin |
+| `GET` | `/v1/tickets` | authentifié |
+| `POST` | `/v1/tickets/buy` | authentifié |
+| `POST` | `/v1/tickets/use` | authentifié |
+| `GET` | `/v1/tickets/usages` | authentifié |
 
+### M9 — Admin sur les utilisateurs
+
+Couvre le SUJET §"Utilisateurs de l'API" (visualisation des utilisateurs et de leur activité).
+
+| Méthode | Path | Accès |
+|---|---|---|
+| `GET` | `/v1/users` | admin — liste tous les comptes |
+| `GET` | `/v1/users/:id` | admin — profil + tickets/usages/transactions counts + 10 dernières séances vues |
+
+### M10 — Documentation et observabilité
+
+| Path | Description |
+|---|---|
+| `GET /health` | sonde de santé applicative |
+| `GET /openapi.json` | spec OpenAPI 3 générée à partir du routing typé |
+| `GET /docs` | UI Scalar consommant `/openapi.json` |
+| `GET /metrics` | métriques Prometheus (`prom-client`, default + histogramme `http_request_duration_seconds`) |
 
 ## Démarrage
 
@@ -167,3 +189,14 @@ npm test -- tests/integration/rooms.test.ts    # uniquement le M5
 ```
 
 Les tests utilisent une base `cinema_test` séparée, créée et migrée automatiquement par `tests/global-setup.ts`.
+
+## Production
+
+Image Docker multi-étape (`Dockerfile`) : build TypeScript → image runtime sans sources `.ts`. La stack `compose.prod.yml` orchestre Postgres + un job de migration unique (`prisma migrate deploy`) + l'API + Caddy comme reverse proxy avec terminaison TLS automatique (Let's Encrypt).
+
+```bash
+# Définir au minimum POSTGRES_PASSWORD, JWT_SECRET, DATABASE_URL, PUBLIC_URL, PUBLIC_HOST
+docker compose -f compose.prod.yml up -d --build
+```
+
+Caddy gère HTTPS automatiquement pour le domaine défini par `PUBLIC_HOST` (les certificats persistent dans le volume `caddy_data`).
