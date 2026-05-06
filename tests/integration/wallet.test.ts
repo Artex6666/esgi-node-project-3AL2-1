@@ -1,86 +1,84 @@
 import request from "supertest";
-import { describe, expect, it, beforeAll } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { app } from "../../src/app.js";
+import { prisma } from "../../src/config/prisma.js";
+import { seedUser } from "../helpers/auth.js";
+import { truncateAll } from "../helpers/db.js";
+
+beforeEach(async () => {
+  await truncateAll();
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});
 
 describe("Wallet", () => {
-    let token: string;
-    const email = `wallet-${Date.now()}@test.com`;
-    const password = "password123";
+  it("retourne le wallet de l'utilisateur connecté", async () => {
+    const { authHeader } = await seedUser();
+    const response = await request(app).get("/v1/wallet").set("Authorization", authHeader);
 
-    beforeAll(async () => {
-        await request(app).post("/v1/auth/register").send({
-            email,
-            password,
-        });
+    expect(response.status).toBe(200);
+    expect(response.body.data.balanceCents).toBe(0);
+  });
 
-        const loginResponse = await request(app).post("/v1/auth/login").send({
-            email,
-            password,
-        });
+  it("permet d'ajouter de l'argent au wallet", async () => {
+    const { authHeader } = await seedUser();
+    const response = await request(app)
+      .post("/v1/wallet/deposit")
+      .set("Authorization", authHeader)
+      .send({ amountCents: 1000 });
 
-        token = loginResponse.body.data.tokens.accessToken;
-    });
+    expect(response.status).toBe(200);
+    expect(response.body.data.balanceCents).toBe(1000);
+  });
 
-    it("retourne le wallet de l'utilisateur connecté", async () => {
-        const response = await request(app)
-            .get("/v1/wallet")
-            .set("Authorization", `Bearer ${token}`);
+  it("permet de retirer de l'argent du wallet", async () => {
+    const { authHeader } = await seedUser({ balanceCents: 1000 });
+    const response = await request(app)
+      .post("/v1/wallet/withdraw")
+      .set("Authorization", authHeader)
+      .send({ amountCents: 500 });
 
-        expect(response.status).toBe(200);
-        expect(response.body.data.balanceCents).toBe(0);
-    });
+    expect(response.status).toBe(200);
+    expect(response.body.data.balanceCents).toBe(500);
+  });
 
-    it("permet d'ajouter de l'argent au wallet", async () => {
-        const response = await request(app)
-            .post("/v1/wallet/deposit")
-            .set("Authorization", `Bearer ${token}`)
-            .send({ amountCents: 1000 });
+  it("refuse un retrait si le solde est insuffisant", async () => {
+    const { authHeader } = await seedUser({ balanceCents: 100 });
+    const response = await request(app)
+      .post("/v1/wallet/withdraw")
+      .set("Authorization", authHeader)
+      .send({ amountCents: 9999 });
 
-        expect(response.status).toBe(200);
-        expect(response.body.data.balanceCents).toBe(1000);
-    });
+    expect(response.status).toBe(400);
+  });
 
-    it("permet de retirer de l'argent du wallet", async () => {
-        const response = await request(app)
-            .post("/v1/wallet/withdraw")
-            .set("Authorization", `Bearer ${token}`)
-            .send({ amountCents: 500 });
+  it("refuse un montant invalide", async () => {
+    const { authHeader } = await seedUser();
+    const response = await request(app)
+      .post("/v1/wallet/deposit")
+      .set("Authorization", authHeader)
+      .send({ amountCents: -100 });
 
-        expect(response.status).toBe(200);
-        expect(response.body.data.balanceCents).toBe(500);
-    });
+    expect(response.status).toBe(400);
+  });
 
-    it("refuse un retrait si le solde est insuffisant", async () => {
-        const response = await request(app)
-            .post("/v1/wallet/withdraw")
-            .set("Authorization", `Bearer ${token}`)
-            .send({ amountCents: 9999 });
+  it("retourne l'historique des transactions", async () => {
+    const { authHeader } = await seedUser();
+    await request(app).post("/v1/wallet/deposit").set("Authorization", authHeader).send({ amountCents: 1000 });
+    await request(app).post("/v1/wallet/withdraw").set("Authorization", authHeader).send({ amountCents: 200 });
 
-        expect(response.status).toBe(400);
-    });
+    const response = await request(app).get("/v1/wallet/transactions").set("Authorization", authHeader);
 
-    it("refuse un montant invalide", async () => {
-        const response = await request(app)
-            .post("/v1/wallet/deposit")
-            .set("Authorization", `Bearer ${token}`)
-            .send({ amountCents: -100 });
+    expect(response.status).toBe(200);
+    expect(response.body.data.transactions).toHaveLength(2);
+  });
 
-        expect(response.status).toBe(400);
-    });
+  it("refuse l'accès sans token", async () => {
+    const response = await request(app).get("/v1/wallet");
 
-    it("retourne l'historique des transactions", async () => {
-        const response = await request(app)
-            .get("/v1/wallet/transactions")
-            .set("Authorization", `Bearer ${token}`);
-
-        expect(response.status).toBe(200);
-        expect(response.body.data.transactions.length).toBeGreaterThanOrEqual(2);
-    });
-
-    it("refuse l'accès sans token", async () => {
-        const response = await request(app).get("/v1/wallet");
-
-        expect(response.status).toBe(401);
-    });
+    expect(response.status).toBe(401);
+  });
 });
