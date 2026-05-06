@@ -5,7 +5,7 @@ import { moviesRouting } from "./modules/movies/routing.js";
 import { roomsRouting } from "./modules/rooms/routing.js";
 import { sessionsRouting } from "./modules/sessions/routing.js";
 import { meEndpoint } from "./modules/users/endpoints.js";
-import { depositEndpoint, getWalletEndpoint, getWalletTransactionsEndpoint, withdrawEndpoint } from "./modules/wallet/endpoints.js";
+import { walletRouting } from "./modules/wallet/routing.js";
 import { buyTicketEndpoint, getMyTicketsEndpoint, getMyTicketUsagesEndpoint, useTicketEndpoint } from "./modules/tickets/endpoints.js";
 import { getAttendanceStatsEndpoint, getDailyStatsEndpoint, getSessionStatsEndpoint, getWeeklyStatsEndpoint } from "./modules/stats/endpoints.js";
 
@@ -16,12 +16,7 @@ export const routing: Routing = {
     movies: moviesRouting,
     rooms: roomsRouting,
     sessions: sessionsRouting,
-    wallet: {
-      "": getWalletEndpoint,
-      deposit: depositEndpoint,
-      withdraw: withdrawEndpoint,
-      transactions: getWalletTransactionsEndpoint,
-    },
+    wallet: walletRouting,
     tickets: {
       "": getMyTicketsEndpoint,
       buy: buyTicketEndpoint,

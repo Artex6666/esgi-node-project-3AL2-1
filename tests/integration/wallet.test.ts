@@ -52,7 +52,7 @@ describe("Wallet", () => {
       .set("Authorization", authHeader)
       .send({ amountCents: 9999 });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
   });
 
   it("refuse un montant invalide", async () => {
