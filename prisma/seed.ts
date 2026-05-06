@@ -219,10 +219,10 @@ async function seedMovies() {
 
 function* weekdaysFrom(start: Date, count: number): Generator<Date> {
   let cursor = new Date(start);
-  cursor.setHours(0, 0, 0, 0);
+  cursor.setUTCHours(0, 0, 0, 0);
   let yielded = 0;
   while (yielded < count) {
-    const day = cursor.getDay();
+    const day = cursor.getUTCDay();
     if (day !== 0 && day !== 6) {
       yield new Date(cursor);
       yielded++;
@@ -230,6 +230,9 @@ function* weekdaysFrom(start: Date, count: number): Generator<Date> {
     cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
   }
 }
+
+const CLOSE_MINUTES = 20 * 60;
+const minutesOfUtcDay = (d: Date) => d.getUTCHours() * 60 + d.getUTCMinutes();
 
 async function seedSessions() {
   console.log("Seeding sessions for the next month of weekdays...");
@@ -260,9 +263,9 @@ async function seedSessions() {
       cycle++;
 
       const startsAt = new Date(day);
-      startsAt.setHours(slot.hour, slot.minute, 0, 0);
+      startsAt.setUTCHours(slot.hour, slot.minute, 0, 0);
       const endsAt = new Date(startsAt.getTime() + (movie.durationMin + 30) * 60 * 1000);
-      if (endsAt.getHours() >= 20 && endsAt.getMinutes() > 0) continue;
+      if (minutesOfUtcDay(endsAt) > CLOSE_MINUTES) continue;
 
       const sameMovieOverlap = created.some(
         (s) => s.movieId === movie.id && s.startsAt < endsAt && s.endsAt > startsAt,
