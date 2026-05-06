@@ -129,6 +129,27 @@ describe("Tickets", () => {
     expect(response.body.data.usages).toHaveLength(1);
   });
 
+  it("ne dépasse pas le solde lors d'achats concurrents", async () => {
+    const STANDARD_PRICE = 1000;
+    const { authHeader, user } = await seedUser({ balanceCents: 5 * STANDARD_PRICE });
+
+    const responses = await Promise.all(
+      Array.from({ length: 10 }, () =>
+        request(app).post("/v1/tickets/buy").set("Authorization", authHeader).send({ kind: "STANDARD" }),
+      ),
+    );
+
+    const successes = responses.filter((r) => r.status === 200);
+    const failures = responses.filter((r) => r.status === 400);
+    expect(successes).toHaveLength(5);
+    expect(failures).toHaveLength(5);
+
+    const finalUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(finalUser.balanceCents).toBe(0);
+    const ticketCount = await prisma.ticket.count({ where: { userId: user.id } });
+    expect(ticketCount).toBe(5);
+  });
+
   it("refuse d'utiliser deux tickets sur la même séance", async () => {
     const { authHeader } = await seedUser({ balanceCents: 2000 });
     const { session } = await seedFutureSession();
