@@ -90,30 +90,14 @@ export const withdrawEndpoint = authedFactory.build({
         const userId = ctx.user.id;
 
         const utilisateurMisAJour = await prisma.$transaction(async (tx) => {
-            const utilisateur = await tx.user.findUnique({
-                where: { id: userId },
-                select: { balanceCents: true },
+            const updated = await tx.user.updateMany({
+                where: { id: userId, balanceCents: { gte: input.amountCents } },
+                data: { balanceCents: { decrement: input.amountCents } },
             });
 
-            if (!utilisateur) {
-                throw createHttpError(404, "Utilisateur introuvable");
-            }
-
-            if (utilisateur.balanceCents < input.amountCents) {
+            if (updated.count === 0) {
                 throw createHttpError(400, "Solde insuffisant");
             }
-
-            const resultat = await tx.user.update({
-                where: { id: userId },
-                data: {
-                    balanceCents: {
-                        decrement: input.amountCents,
-                    },
-                },
-                select: {
-                    balanceCents: true,
-                },
-            });
 
             await tx.transaction.create({
                 data: {
@@ -121,6 +105,11 @@ export const withdrawEndpoint = authedFactory.build({
                     amountCents: -input.amountCents,
                     kind: "WITHDRAWAL",
                 },
+            });
+
+            const resultat = await tx.user.findUniqueOrThrow({
+                where: { id: userId },
+                select: { balanceCents: true },
             });
 
             return resultat;
