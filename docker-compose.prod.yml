@@ -27,6 +27,17 @@ services:
         condition: service_healthy
     restart: "no"
 
+  seed:
+    image: cinema-api:latest
+    command: ["npx", "prisma", "db", "seed"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SEED_FORCE: ${SEED_FORCE:-0}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   api:
     image: cinema-api:latest
     restart: unless-stopped
@@ -42,7 +53,7 @@ services:
       TICKET_STANDARD_PRICE_CENTS: ${TICKET_STANDARD_PRICE_CENTS:-1000}
       TICKET_SUPER_PRICE_CENTS: ${TICKET_SUPER_PRICE_CENTS:-8000}
     depends_on:
-      migrate:
+      seed:
         condition: service_completed_successfully
     expose:
       - "3000"
@@ -119,7 +130,7 @@ services:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "127.0.0.1:3001:3000"
+      - "3001:3000"
     depends_on:
       - loki
       - prometheus

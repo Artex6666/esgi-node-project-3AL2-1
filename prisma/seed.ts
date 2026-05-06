@@ -284,6 +284,10 @@ async function seedSessions() {
 }
 
 async function main() {
+  if ((await prisma.room.count()) > 0 && process.env.SEED_FORCE !== "1") {
+    console.log("Database already populated, skipping seed (set SEED_FORCE=1 to override).");
+    return;
+  }
   await reset();
   await seedUsers();
   await seedRooms();

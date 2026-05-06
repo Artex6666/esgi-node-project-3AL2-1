@@ -19,156 +19,6 @@ Le cinéma est ouvert du lundi au vendredi de 9h à 20h.
 | Tests | **vitest** + **supertest** | Tests d'intégration HTTP qui frappent la vraie app contre une DB Postgres dédiée (`cinema_test`), créée et migrée par `tests/global-setup.ts` |
 | Lint / format | ESLint flat config + Prettier | Standard, pas de règles maison exotiques |
 
-### Convention de modules
-
-Chaque module suit la même arborescence :
-
-```
-src/modules/<name>/
-  schemas.ts     // schémas Zod (input/output, partagés service ↔ HTTP)
-  service.ts     // logique métier + accès Prisma
-  endpoints.ts   // build() via factories typées
-  routing.ts     // arbre de routes pour express-zod-api
-```
-
-Les **factories** composent les middlewares : `baseFactory` → `authedFactory` (+ JWT) → `adminFactory` (+ rôle). Aucun module n'a besoin de redéclarer la chaîne d'auth.
-
-### Erreurs
-
-Une seule classe racine `AppError` dans `src/lib/errors.ts` qui imite la shape `http-errors` (`statusCode`, `status`, `expose`) pour que `defaultResultHandler` d'`express-zod-api` propage le bon code HTTP au lieu de tout coercer en 500. Les sous-classes : `BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `ConflictError`, `UnprocessableError`.
-
----
-
-## Modules livrés
-
-### M1–M4 — Fondations, Auth, Films — *Etienne Quantin*
-
-- [x] Bootstrap Express + `express-zod-api`, factory `baseFactory`, endpoint `/health`
-- [x] Docker Compose dev (Postgres 16-alpine, healthcheck, volume persistant)
-- [x] Schéma Prisma complet (User, RefreshToken, Room, Movie, Session, Ticket, TicketUsage, Transaction, EmployeeShift) + migration initiale + seed
-- [x] Validation d'environnement via Zod (`src/config/env.ts`) — fail-fast au boot si `JWT_SECRET` < 32 chars, `DATABASE_URL` invalide, etc.
-- [x] Logger pino structuré + redaction des champs sensibles
-- [x] Classes d'erreurs HTTP réutilisables (`src/lib/errors.ts`)
-- [x] Helpers tokens (`src/lib/tokens.ts`) : signature/vérification JWT, émission de refresh tokens hashés, **rotation transactionnelle** du refresh token, révocation globale par user
-- [x] Auth middleware (Bearer JWT) injectant l'utilisateur dans le contexte
-- [x] Role middleware (`requireRole(...)`) composable
-- [x] Endpoints auth : `POST /v1/auth/register`, `/login`, `/refresh`, `/logout`
-- [x] Endpoint `GET /v1/me`
-- [x] Module **Movies** : CRUD admin + planning par film + filtre maintenance des salles
-- [x] Tests d'intégration auth + movies (helpers `seedUser`, `truncateAll`, DB de test isolée)
-
-### M5 — Gestion des Salles — *Loris RAMEAU*
-
-Conforme à la section *Gestion des Salles de Cinéma* du sujet.
-
-- [x] CRUD complet (Créer, Lire, Mettre à jour, Supprimer) sur les salles
-- [x] Champs : `name`, `description`, `images` (string[]), `type`, `capacity`, `accessible` (optionnel, défaut `false`)
-- [x] Contrainte de capacité **15 ≤ capacity ≤ 30** appliquée au schéma Zod (rejet 400)
-- [x] Au moins **10 salles** seedées (`prisma/seed.ts`)
-- [x] Toggle de mise en maintenance par admin (`PATCH /v1/rooms/:id/maintenance`)
-- [x] Une salle en maintenance n'apparaît plus dans le planning : la liste des séances renvoyée pour cette salle est vide (cohérent avec le filtre déjà appliqué côté `movies/:id/planning`)
-- [x] **Planning d'une salle** sur une période choisie (`from`/`to` ISO-8601, optionnels) — passé ou futur — accessible à tout utilisateur authentifié
-- [x] Suppression refusée (409) si la salle a encore des séances (FK Prisma `P2003`)
-- [x] Création refusée (409) si le nom est déjà pris (`P2002`)
-- [x] Tests d'intégration sur tous les endpoints (rôles, validation, maintenance, planning)
-
-#### Endpoints exposés
-
-| Méthode | Path | Accès |
-|---|---|---|
-| `GET` | `/v1/rooms` | authentifié |
-| `GET` | `/v1/rooms/:id` | authentifié |
-| `POST` | `/v1/rooms` | admin |
-| `PUT` | `/v1/rooms/:id` | admin |
-| `DELETE` | `/v1/rooms/:id` | admin |
-| `PATCH` | `/v1/rooms/:id/maintenance` | admin — body `{ underMaintenance: boolean }` |
-| `GET` | `/v1/rooms/:id/planning?from=&to=` | authentifié |
-
-### M6 — Gestion des Séances — *Loris RAMEAU*
-
-Conforme à la section *Gestion des Séances* du sujet.
-
-- [x] Helpers temporels réutilisables : [src/lib/businessHours.ts](src/lib/businessHours.ts) (heures d'ouverture, durée min, weekday) et [src/lib/overlap.ts](src/lib/overlap.ts) (intervalles semi-ouverts)
-- [x] CRUD complet sur les séances réservé aux admins
-- [x] Liste / planning des séances accessible à tout utilisateur authentifié, avec filtre `from`/`to` ISO-8601
-- [x] Endpoint admin de fréquentation par séance (`attendeesCount` = nombre de `TicketUsage` rattachés)
-- [x] **Règle « cinéma ouvert Lun-Ven 09:00–20:00 »** : rejet 422 si la séance déborde, n'est pas un jour ouvré, ou chevauche minuit
-- [x] **Règle « durée ≥ film + 30 min »** : rejet 422 si la séance est trop courte
-- [x] **Pas de chevauchement** : rejet 409 si une autre séance dans la même salle ou pour le même film recoupe l'intervalle (intervalles semi-ouverts → enchaînements dos à dos OK)
-- [x] Salle en maintenance : création/MAJ refusée (422), et la liste ne renvoie pas les séances qui s'y déroulent
-- [x] Suppression refusée (409) si la séance a déjà des billets utilisés (FK Prisma `P2003`)
-- [x] Seed planifie ≥ 1 mois de séances ouvrées à l'avance (déjà en place)
-- [x] Tests d'intégration : CRUD + rôles, business hours (weekend, avant 9h, après 20h, start ≥ end), durée (frontière `film + 30`), overlap (même salle, même film salle ≠, dos-à-dos OK, salles ≠ films ≠ OK), maintenance, attendance (compte, 0, 403, 404)
-
-#### Endpoints exposés
-
-| Méthode | Path | Accès |
-|---|---|---|
-| `GET` | `/v1/sessions?from=&to=` | authentifié — exclut les salles en maintenance |
-| `GET` | `/v1/sessions/:id` | authentifié |
-| `POST` | `/v1/sessions` | admin |
-| `PUT` | `/v1/sessions/:id` | admin |
-| `DELETE` | `/v1/sessions/:id` | admin |
-| `GET` | `/v1/sessions/:id/attendance` | admin — `{ sessionId, attendeesCount }` |
-
-
-#### M7 — Wallet + Billetterie — *Theo Rouable*
-
-Conforme aux sections Gestion de l’Argent et Gestion des Billets du sujet.
-
-- [x] Gestion du solde utilisateur (balanceCents)
-- [x] Dépôt d’argent (incrément transactionnel)
-- [x] Retrait d’argent avec vérification du solde
-- [x] Historique des transactions triées par date
-- [x] Types de transactions : DEPOSIT, WITHDRAWAL, TICKET_PURCHASE
-- [x] Achat de billets (STANDARD, SUPER) avec décrément du solde
-- [x] STANDARD → 1 utilisation, SUPER → 10 utilisations
-- [x] Utilisation d’un billet pour accéder à une séance
-- [x] Décrément du nombre d’utilisations restantes
-- [x] Historique des utilisations de billets
-- [x] Règle “1 utilisateur = 1 place par séance” (contrainte gérée côté code)
-- [x] Refus si solde insuffisant lors de l’achat
-- [x] Refus si ticket invalide, épuisé ou n’appartient pas à l’utilisateur
-- [x] Refus si séance passée ou salle en maintenance
-- [x] Respect de la capacité maximale de la salle
-- [x] Prévention des conditions de course :
-      - séance complète/double-place → `SELECT ... FOR UPDATE` sur `Session` lors de l'utilisation d'un billet
-      - dépassement de solde → `UPDATE ... WHERE balanceCents >= amount` (mise à jour conditionnelle atomique) au retrait et à l'achat
-- [x] Toutes les opérations critiques sont transactionnelles (Prisma `$transaction`)
-- [x] Logs structurés sur les opérations
-- [x] Régressions race-condition couvertes par un test (achat parallèle x10)
-
-#### Endpoints exposés
-
-| Méthode | Path | Accès |
-|---|---|---|
-| `GET` | `/v1/wallet` | authentifié |
-| `POST` | `/v1/wallet/deposit` | authentifié |
-| `POST` | `/v1/wallet/withdraw` | authentifié |
-| `GET` | `/v1/wallet/transactions` | authentifié |
-| `GET` | `/v1/wallet/all-transactions?userId=` | admin |
-| `GET` | `/v1/tickets` | authentifié |
-| `POST` | `/v1/tickets/buy` | authentifié |
-| `POST` | `/v1/tickets/use` | authentifié |
-| `GET` | `/v1/tickets/usages` | authentifié |
-
-### M9 — Admin sur les utilisateurs
-
-Couvre le SUJET §"Utilisateurs de l'API" (visualisation des utilisateurs et de leur activité).
-
-| Méthode | Path | Accès |
-|---|---|---|
-| `GET` | `/v1/users` | admin — liste tous les comptes |
-| `GET` | `/v1/users/:id` | admin — profil + tickets/usages/transactions counts + 10 dernières séances vues |
-
-### M10 — Documentation et observabilité  — *Etienne Quantin*
-
-| Path | Description |
-|---|---|
-| `GET /health` | sonde de santé applicative |
-| `GET /openapi.json` | spec OpenAPI 3 générée à partir du routing typé |
-| `GET /docs` | UI Scalar consommant `/openapi.json` |
-| `GET /metrics` | métriques Prometheus (`prom-client`, default + histogramme `http_request_duration_seconds`) |
 
 #### Pipeline de logs (production)
 
@@ -178,14 +28,6 @@ La stack prod ajoute **Loki** (stockage), **Promtail** (scrape Docker via `docke
 - `observability/promtail-config.yml` — découverte Docker, parsing JSON ciblé sur le container `api`.
 - `observability/grafana/provisioning/datasources/loki.yml` — Loki provisionné comme datasource par défaut.
 
-Grafana est exposé uniquement sur `127.0.0.1:3001` (pas internet-facing). Tunnel SSH pour la démo :
-
-```bash
-ssh -L 3001:localhost:3001 <host>
-# puis http://localhost:3001 (login: GRAFANA_ADMIN_USER / GRAFANA_ADMIN_PASSWORD)
-```
-
-Requêtes LogQL utiles : `{service="api"}` (tous les logs API), `{service="api", level="error"}`, `{service="api"} | json | statusCode >= 500`.
 
 ## Démarrage (stack de dev)
 
@@ -232,4 +74,18 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml down
 docker compose --env-file .env.prod -f docker-compose.prod.yml down -v
 ```
 
-Caddy gère HTTPS automatiquement pour le domaine défini par `PUBLIC_HOST` (les certificats persistent dans le volume `caddy_data`). Grafana n'est pas exposé publiquement (binding `127.0.0.1:3001`).
+## API déployée
+
+Base URL pour l'API :
+`http://31.56.29.3:4444/v1`
+
+Documentation Swagger :
+`http://31.56.29.3:4444/docs`
+
+Métriques Prometheus :
+`http://31.56.29.3:4444/metrics`
+
+Grafana :
+`http://31.56.29.3:3001/`
+
+Caddy gère HTTPS automatiquement pour le domaine défini par `PUBLIC_HOST` (les certificats persistent dans le volume `caddy_data`). Grafana est exposé sur le port `3001` (toutes interfaces) — login via `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD`.
