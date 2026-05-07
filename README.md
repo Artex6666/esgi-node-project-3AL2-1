@@ -3,7 +3,7 @@
 API REST pour la gestion d'un cinéma (sujet ESGI). Node.js + TypeScript + PostgreSQL.
 
 Le cinéma est ouvert du lundi au vendredi de 9h à 20h.
-
+.
 ## Stack et choix techniques
 
 | Couche | Choix | Pourquoi |
